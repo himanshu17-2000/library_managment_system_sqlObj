@@ -310,5 +310,3 @@ def get_book_by_name():
 
     books = list(book)
     return jsonify(list(map(get_dict, book))), 200
-    
-    return "hi",200
