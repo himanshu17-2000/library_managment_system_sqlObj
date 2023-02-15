@@ -5,12 +5,29 @@ from flask import request
 from models.Book import Book
 from models.Member import Member
 from models.Transaction import Transaction
-
+import requests
 api = Blueprint("api", __name__)
 
 
-@api.route("/")
-def home():
+@api.route("/<string:genre>")
+def home(genre):
+    
+    # url = f"https://hapi-books.p.rapidapi.com/nominees/{genre}/2020"
+
+    # headers = {
+    #     "X-RapidAPI-Key": "9c254922afmsh6ac51f1b70c0bdep1978f1jsn7f9444b252cf",
+    #     "X-RapidAPI-Host": "hapi-books.p.rapidapi.com"
+    # }
+
+    # response = requests.request("GET", url, headers=headers)
+
+    # books =  response.json()
+    # print(books)
+
+    # for book in books :
+    #      print(book)
+    #     #  b = Book(book_name = book["name"] ,  book_author = book["author"] ,votes = book["votes"])
+    #     #  print(b)
     return "<h1>Himanshu kumar amb </h1>", 200
 
 
@@ -265,3 +282,33 @@ def transaction_by_id(_id):
     except SQLObjectNotFound:
         return "object not found ", 404
     return jsonify(list(map(get_dict, [tras])))
+
+
+@api.route('/get_book_by_name' , methods=['POST'])
+def get_book_by_name():
+    obj = request.json
+    book =None
+    if(obj.get('book_name') is not None and obj.get('author') is not None):
+        book = Book.selectBy(book_name = obj.get('book_name') , book_author =obj.get('author'))
+        print(list(book))
+    elif(obj.get('book_name') is None and obj.get('author')is not None):
+        book = Book.selectBy(book_author =obj.get('author'))
+        print(list(book))
+    elif(obj.get('book_name') is not None and obj.get('author')is None):
+        book = Book.selectBy(book_name = obj.get('book_name'))
+        print(list(book))
+
+
+    def get_dict(item):
+        return {
+            "book_id": item.id,
+            "book_name": item.book_name,
+            "book_author": item.book_author,
+            "book_stock": item.book_stock,
+            "votes": item.book_votes,
+        }
+
+    books = list(book)
+    return jsonify(list(map(get_dict, book))), 200
+    
+    return "hi",200
