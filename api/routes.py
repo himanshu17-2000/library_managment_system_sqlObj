@@ -5,13 +5,13 @@ from flask import request
 from models.Book import Book
 from models.Member import Member
 from models.Transaction import Transaction
-import requests
+
+# import requests
 api = Blueprint("api", __name__)
 
 
-@api.route("/<string:genre>")
-def home(genre):
-    
+@api.route("/")
+def home():
     # url = f"https://hapi-books.p.rapidapi.com/nominees/{genre}/2020"
 
     # headers = {
@@ -36,12 +36,11 @@ def register_member():
     name = request.json["name"]
     email = request.json["email"]
     phone = request.json["phone"]
-    single_member = Member.select(
-        Member.q.email == email)  # naming coonvention
+    single_member = Member.select(Member.q.email == email)  # naming coonvention
     if list(single_member) == []:
         Member(name=name, email=email, phone=phone)
         return jsonify({"message": "member added "}), 200
-    return jsonify({"message": "member already access "}), 401
+    return jsonify({"message": "member already access"}), 401
 
 
 @api.route("/getmember/<int:_id>", methods=["GET"])
@@ -49,8 +48,9 @@ def get_member(_id):
     try:
         user = Member.get(_id)
     except SQLObjectNotFound:
-        return "object not found ", 404
+        return jsonify({"message": "member not found"}), 401
     else:
+
         def get_dict(item):
             return {
                 "member_id": item.id,
@@ -87,7 +87,7 @@ def delete_member(_id):
     try:
         user = Member.get(_id)
     except SQLObjectNotFound:
-        return "object not found ", 404
+        return jsonify({"message": "Object Not found"}), 404
     else:
         user.delete(_id)
         return jsonify({"message": "Member Deleted"}), 200
@@ -104,8 +104,13 @@ def borrow_book():
         return jsonify({"message": "Member Does not exists , Please register"}), 404
     # =============== Making New Tuple in Transactions =============================
     member = Member.get(boro_member_id)
-    if (member.debt >= 500):
-        return jsonify({"message": "Your debt exceeded 500rs repay before borrowing book"}), 200
+    if member.debt >= 500:
+        return (
+            jsonify(
+                {"message": "Your debt exceeded 500rs repay before borrowing book"}
+            ),
+            200,
+        )
 
     book = Book.select(Book.q.id == boro_book_id)
     book = list(book)[0]
@@ -150,19 +155,27 @@ def return_book():
     new_debt = member.debt + new_fine
     tra.set(fine=new_fine)
     member.set(debt=new_debt)
-    print(member.debt)
     return jsonify({"message": "Book has been Returned", "rent": tra.fine}), 200
 
 
-@api.route('/debt', methods=['POST'])
+@api.route("/debt", methods=["POST"])
 def pay_debt():
-    member_id = request.json['member_id']
-    amount = request.json['amount']
-    member = Member.get(member_id)
+    member_id = request.json["member_id"]
+    amount = request.json["amount"]
+    try:
+        member = Member.get(member_id)
+    except SQLObjectNotFound:
+        return jsonify({"message": "Object Not Found"}), 404
+
     p_debt = member.debt
-    n_debt = p_debt-amount
+    n_debt = p_debt - amount
     member.set(debt=n_debt)
-    return jsonify({"message": "Amount returned", "amount": amount, 'remaining': member.debt}), 200
+    return (
+        jsonify(
+            {"message": "Amount returned", "amount": amount, "remaining": member.debt}
+        ),
+        200,
+    )
 
 
 @api.route("/popular", methods=["GET"])
@@ -227,9 +240,10 @@ def addbook():
     name = request.json["book_name"]
     author = request.json["book_author"]
     stock = request.json["book_stock"]
-    prevbook = list(Book.selectBy(book_name=name, book_author=author))[0]
-    if prevbook is not None:
-        prevbook.book_stock += stock
+    prevbook = Book.selectBy(book_name=name, book_author=author)
+    if list(prevbook) != []:
+        prev_book = list(prevbook)[0]
+        prev_book.book_stock += stock
     else:
         Book(book_name=name, book_author=author, book_stock=stock)
 
@@ -241,10 +255,10 @@ def deletebook(_id):
     try:
         book = Book.get(_id)
     except SQLObjectNotFound:
-        return "object not found ", 404
+        return jsonify({"message": "Book deleted"}), 404
     else:
         book.delete(_id)
-    return jsonify({"message": "Book deleted"}), 404
+    return jsonify({"message": "Book deleted"}), 200
 
 
 @api.route("/transactions", methods=["GET"])
@@ -284,20 +298,21 @@ def transaction_by_id(_id):
     return jsonify(list(map(get_dict, [tras])))
 
 
-@api.route('/get_book_by_name' , methods=['POST'])
+@api.route("/get_book_by_name", methods=["POST"])
 def get_book_by_name():
     obj = request.json
-    book =None
-    if(obj.get('book_name') is not None and obj.get('author') is not None):
-        book = Book.selectBy(book_name = obj.get('book_name') , book_author =obj.get('author'))
-        print(list(book))
-    elif(obj.get('book_name') is None and obj.get('author')is not None):
-        book = Book.selectBy(book_author =obj.get('author'))
-        print(list(book))
-    elif(obj.get('book_name') is not None and obj.get('author')is None):
-        book = Book.selectBy(book_name = obj.get('book_name'))
-        print(list(book))
+    book = None
+    if obj.get("book_name") is not None and obj.get("author") is not None:
+        book = Book.selectBy(
+            book_name=obj.get("book_name"), book_author=obj.get("author")
+        )
 
+    elif obj.get("book_name") is None and obj.get("author") is not None:
+        book = Book.selectBy(book_author=obj.get("author"))
+
+    elif obj.get("book_name") is not None and obj.get("author") is None:
+        book = Book.selectBy(book_name=obj.get("book_name"))
+        get_book_by_name
 
     def get_dict(item):
         return {
