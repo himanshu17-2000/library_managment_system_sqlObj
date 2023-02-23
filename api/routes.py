@@ -222,6 +222,9 @@ def pay_debt():
         return jsonify({"message": "Please fill all values"}), 400
     try:
         member = Member.get(member_id)
+        if(member.debt == 0 ):
+            return jsonify({"message": "No Debt left","fine" :member.debt}), 200
+        
     except SQLObjectNotFound:
         return jsonify({"message": "Object Not Found"}), 404
 
@@ -272,10 +275,16 @@ def highpaying():
             dic[transaction.member_id] += 1
     arr = [(v, k) for k, v in dic.items()]
     arr.sort()
+    print(arr)
     members = []
     for value, key in arr:
-        members.append(Member.get(key))
+        try:
+            members.append(Member.get(key))
+        except:
+            continue
+    print(members)
     return jsonify(list(map(get_dict, members))), 200
+    # return "hell0" , 200
 
 
 @api.route("/books", methods=["GET"])
@@ -396,3 +405,6 @@ def get_book_by_name():
 
     books = list(book)
     return jsonify(list(map(get_dict, books))), 200
+
+
+
