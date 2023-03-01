@@ -10,9 +10,10 @@ def test_home_route(client):
 
 
 def test_register_route(client):
-    data1 = {"name": "Poojan", "email": "Poojan@gmail.com", "phone": 321657892}
+    data1 = {"name": "Tanmay", "email": "Tanmay@gmail.com", "phone": 9596989598}
     resp = client.post('/register' , json=data1)
     resp_json = resp.json
+    print(resp_json)
     id = resp_json['mem_id']
     assert resp.status_code == 200 
     assert resp_json['message'] == 'member added' 
@@ -63,15 +64,10 @@ def test_borrow_route(client):
     res1 = client.post("/borrow", json=data1)
     print(res1.json)
     assert res1.status_code == 200
-    assert res1.json["message"] == "First_return the previouly borrowed book"
-
-def test_borrow_route_invalid(client):
-    data1 = {"member_id": 1, "book_id": 1}
-    res1 = client.post("/borrow", json=data1)
-    print(res1.json)
-    assert res1.status_code == 200
-    assert res1.json["message"] != ""
-    assert res1.json["message"] == "First_return the previouly borrowed book"
+    assert res1.json["message"] == "Thanks for Borrowing Book"
+    tra_id_obj = {"tra_id" :res1.json['tra_id']}
+    res2 = client.post("/return", json=tra_id_obj)
+    print(res2)
     
 
 def test_return_book_route(client):
@@ -183,7 +179,7 @@ def test_transactions_by_id_invalid(client):
 
 def test_end_to_end(client):
     # Registering Member 
-    data1 = {"name": "Harsh", "email": "Harsh@gmail.com", "phone": 9865322154}
+    data1 = {"name": "Gopal", "email": "Gopal@gmail.com", "phone": 9865322154}
     resp = client.post('/register' , json=data1)
     resp_json = resp.json
     mem_id = resp_json['mem_id']

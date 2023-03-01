@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from sqlobject import SQLObjectNotFound
+from sqlobject import *
 from flask import Blueprint, jsonify, request
 from models.Book import Book
 from models.Member import Member
@@ -8,37 +8,50 @@ import requests
 
 api = Blueprint("api", __name__)
 
-
 @api.route("/")
 def home():
     try:
         args = request.args
+        global url
         url = "https://hapi-books.p.rapidapi.com/nominees/romance/2020"
+        genre = "romance"
+        year = "2020"
+        print(args.to_dict())
         if args.to_dict() != {}:
-            url = f"https://hapi-books.p.rapidapi.com/nominees/{args['genre']}/{args['year']}"
-
+            if args["genre"]:
+                genre = args["genre"]
+            if args["year"]:
+                year = args["year"]
+            url = f"https://hapi-books.p.rapidapi.com/nominees/{genre}/{year}"
+        print(url)
         headers = {
             "X-RapidAPI-Key": "9c254922afmsh6ac51f1b70c0bdep1978f1jsn7f9444b252cf",
             "X-RapidAPI-Host": "hapi-books.p.rapidapi.com",
         }
 
         response = requests.request("GET", url, headers=headers)
-
+        print(response)
         books = response.json()
         print(books)
         for book in books:
-            b = Book(
-                book_name=book["name"],
-                book_author=book["author"],
-                book_votes=book["votes"],
-            )
+            prevbook = Book.selectBy(book_name=book["name"], book_author=book["author"])
+            book_id = None
+            if list(prevbook) != []:
+                prev_book = list(prevbook)[0]
+                prev_book.book_stock += 1
+            else:
+                book_id = Book(
+                    book_name=book["name"],
+                    book_author=book["author"],
+                    book_votes=book["votes"],
+                ).id
     except:
         return (
-            "<h1>Something Went Wrong in Third Party Api or YOur are Filling repeated Values </h1>",
-            400,
+            jsonify({"message": "Some Thing went wrong with 3rd party Rapid api "}), 500
         )
-    return "<h1>Himanshu kumar amb </h1>", 200
-
+    return (
+            jsonify({"message": "Books are fetched and stored in data base"}), 200
+        )
 
 @api.route("/register", methods=["POST"])
 def register_member():
@@ -56,10 +69,11 @@ def register_member():
     if name == "" or email == "" or phone == None:
         return jsonify({"message": "Please fill all values"}), 400
     mem_id = None
-    single_member = Member.select(Member.q.email == email)  # naming coonvention
+    single_member = Member.select(Member.q.email == email)
     if list(single_member) == []:
         mem_id = Member(name=name, email=email, phone=phone).id
         return jsonify({"message": "member added", "mem_id": mem_id}), 200
+
     return (
         jsonify(
             {"message": "member already exists", "mem_id": list(single_member)[0].id}
@@ -112,12 +126,31 @@ def delete_member(_id):
     try:
         user = Member.get(_id)
     except SQLObjectNotFound:
-        return jsonify({"message": "Object Not found"}), 404
+        return jsonify({"message": "Object Not found"}), 404 
     else:
-        pending_tra = list(Transaction.selectBy(member_id=user.id , borrowed=True))
-        if(pending_tra != []):
-            return jsonify({"message": "Can't Revoke member ship please return borrowed book, and pay your rent"}),400 
+        pending_tra = list(Transaction.selectBy(member_id=user.id, borrowed=True))
+        pending_debt = Member.selectBy(id=user.id).getOne().debt
+       
+        
+        if pending_tra != []:
+            return (
+                jsonify(
+                    {"message": "Can't Revoke member ship please return borrowed book"}
+                ),
+                400,
+            )
+        if pending_debt > 10:
+            return (
+                jsonify(
+                    {
+                        "message": "Can't Revoke member ship please pay your remaining rent"
+                    }
+                ),
+                400,
+            )
+
         user.delete(_id)
+
         return jsonify({"message": "Member Deleted"}), 200
 
 
@@ -158,7 +191,7 @@ def borrow_book():
         )
     )
     if single_tra != []:
-        return jsonify({"message": "First_return the previouly borrowed book"})
+        return jsonify({"message": "First_return the previouly borrowed book"}),400
     Tra = Transaction(
         book_id=boro_book_id, member_id=boro_member_id, book_name=book.book_name
     )
@@ -200,7 +233,7 @@ def return_book():
     tra.set(borrowed=False)
     f_date = tra.from_date
     t_date = datetime.now().date()
-    # t_date = date(2023, 2, 28)
+    # t_date = date(2023, 3, 30)
     diff = t_date - f_date
     new_fine = (diff.days) * 10
     new_debt = member.debt + new_fine
@@ -222,9 +255,9 @@ def pay_debt():
         return jsonify({"message": "Please fill all values"}), 400
     try:
         member = Member.get(member_id)
-        if(member.debt == 0 ):
-            return jsonify({"message": "No Debt left","fine" :member.debt}), 200
-        
+        if member.debt == 0:
+            return jsonify({"message": "No Debt left", "fine": member.debt}), 200
+
     except SQLObjectNotFound:
         return jsonify({"message": "Object Not Found"}), 404
 
@@ -405,6 +438,3 @@ def get_book_by_name():
 
     books = list(book)
     return jsonify(list(map(get_dict, books))), 200
-
-
-
