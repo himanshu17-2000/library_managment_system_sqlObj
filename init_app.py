@@ -9,10 +9,14 @@ from sqlobject import *
 import os
 
 
-def create_app():
-    db_filename = os.path.abspath("data.sqlite")
-    connection_string = "sqlite:" + db_filename
-    sqlhub.processConnection = connectionForURI(connection_string)
+def create_app(testing ):
+    if(testing == False ) :
+        db_filename = os.path.abspath("data.sqlite")
+        connection_string = "sqlite:" + db_filename
+        sqlhub.processConnection = connectionForURI(connection_string)
+    else:
+        sqlhub.processConnection = connectionForURI("sqlite:" + os.path.abspath("test.sqlite"))
+
     app = Flask(__name__)
     Book.createTable(ifNotExists=True)
     Member.createTable(ifNotExists=True)

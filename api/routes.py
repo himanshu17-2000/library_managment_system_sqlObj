@@ -62,6 +62,7 @@ def register_member():
         name = request.json["name"]
         email = request.json["email"]
         phone = request.json["phone"]
+        print(phone)
 
     except KeyError:
         return jsonify({"message": "Key Error = All values not Available"}), 404
